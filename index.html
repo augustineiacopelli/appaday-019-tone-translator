@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>019 · Tone Translator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d0d0d;
+    --paper: #f5f0e8;
+    --paper-dark: #ede7d9;
+    --accent: #c8402a;
+    --accent-light: #e8d5d0;
+    --muted: #7a7265;
+    --border: #c9c2b4;
+    --shadow: rgba(13,13,13,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── NAV BAR ── */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1.5px solid var(--border);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-brand {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-decoration: none;
+  }
+  .nav-brand span { color: var(--accent); font-weight: 500; }
+  .nav-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .nav-settings-btn {
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .nav-settings-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .nav-settings-btn .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    display: inline-block;
+    transition: background 0.2s;
+  }
+  .nav-settings-btn.configured .dot { background: #4caf50; }
+
+  /* ── SETTINGS PANEL ── */
+  .settings-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(13,13,13,0.45);
+    z-index: 200;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 68px 24px 0;
+  }
+  .settings-overlay.open { display: flex; }
+  .settings-panel {
+    background: var(--paper);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    width: 360px;
+    max-width: 100%;
+    box-shadow: 0 8px 32px var(--shadow);
+    animation: slideDown 0.18s ease;
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .settings-panel h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  .settings-close {
+    float: right;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--muted);
+    margin-top: -4px;
+  }
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--ink);
+    transition: border-color 0.15s;
+  }
+  .field input:focus { outline: none; border-color: var(--ink); }
+  .settings-save {
+    width: 100%;
+    padding: 11px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: opacity 0.15s;
+    margin-top: 4px;
+  }
+  .settings-save:hover { opacity: 0.85; }
+
+  /* ── MAIN ── */
+  main {
+    flex: 1;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+  }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(32px, 6vw, 52px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .hero p {
+    margin-top: 10px;
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  /* ── INPUT SECTION ── */
+  .input-section {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  .input-section label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 8px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--paper);
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { outline: none; border-color: var(--ink); }
+
+  /* ── TONE PICKER ── */
+  .tone-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+  }
+  @media (max-width: 500px) { .tone-row { grid-template-columns: repeat(2,1fr); } }
+
+  .tone-btn {
+    padding: 12px 8px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--paper);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .tone-btn:hover { border-color: var(--ink); background: var(--paper-dark); }
+  .tone-btn.selected {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .tone-btn .tone-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+  .tone-btn .tone-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .tone-btn .tone-desc {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-weight: 300;
+  }
+
+  /* ── TRANSLATE BTN ── */
+  .translate-btn {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-style: italic;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .translate-btn:hover { opacity: 0.9; }
+  .translate-btn:active { transform: scale(0.99); }
+  .translate-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ── OUTPUT ── */
+  .output-section {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 2px 8px var(--shadow);
+    display: none;
+  }
+  .output-section.visible { display: block; animation: fadeUp 0.25s ease; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .output-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .output-tone-badge {
+    background: var(--accent);
+    color: white;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .output-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .action-btn {
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+  }
+  .action-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .action-btn.loading { opacity: 0.5; pointer-events: none; }
+
+  .output-text {
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--ink);
+    white-space: pre-wrap;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 300;
+    min-height: 60px;
+  }
+  .output-text.streaming::after {
+    content: '▋';
+    animation: blink 0.8s step-end infinite;
+    color: var(--accent);
+    margin-left: 1px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ── NO API KEY WARNING ── */
+  .no-key-banner {
+    display: none;
+    background: #fff8f7;
+    border: 1.5px solid #e8c8c3;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: var(--accent);
+    text-align: center;
+  }
+  .no-key-banner.show { display: block; }
+  .no-key-banner button {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  /* ── EMAIL MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(13,13,13,0.45);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--paper);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    width: 420px;
+    max-width: 100%;
+    box-shadow: 0 12px 40px var(--shadow);
+    animation: slideDown 0.18s ease;
+  }
+  .modal h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+  .modal p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .modal-cancel {
+    flex: 1;
+    padding: 11px;
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .modal-cancel:hover { border-color: var(--ink); }
+  .modal-send {
+    flex: 2;
+    padding: 11px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .modal-send:hover { opacity: 0.85; }
+  .modal-send:disabled { opacity: 0.45; cursor: not-allowed; }
+  .send-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 10px;
+    min-height: 18px;
+  }
+  .send-status.ok { color: #4caf50; }
+  .send-status.err { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="https://augustineiacopelli.github.io" class="nav-brand"><span>019</span> · AppADay</a>
+  <span class="nav-title">Tone Translator</span>
+  <button class="nav-settings-btn" id="settingsBtn">
+    <span class="dot" id="configDot"></span> Settings
+  </button>
+</nav>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-panel">
+    <button class="settings-close" id="settingsClose">✕</button>
+    <h2>Settings</h2>
+    <div class="field">
+      <label>Anthropic API Key</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-…" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Email Address (for sending output)</label>
+      <input type="email" id="emailInput" placeholder="you@example.com">
+    </div>
+    <button class="settings-save" id="settingsSave">Save Settings</button>
+  </div>
+</div>
+
+<!-- EMAIL MODAL -->
+<div class="modal-overlay" id="emailModal">
+  <div class="modal">
+    <h3>Send Translation</h3>
+    <p>This will open your mail client with the translated text pre-filled.</p>
+    <div class="field">
+      <label>To</label>
+      <input type="email" id="modalEmail" placeholder="you@example.com">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" id="modalCancel">Cancel</button>
+      <button class="modal-send" id="modalSend">Open in Mail</button>
+    </div>
+    <div class="send-status" id="sendStatus"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main>
+  <div class="hero">
+    <h1>Say it in the right <em>tone.</em></h1>
+    <p>Paste any text and translate it into the voice that fits.</p>
+  </div>
+
+  <div class="no-key-banner" id="noKeyBanner">
+    No API key set. <button onclick="openSettings()">Open Settings</button> to add yours.
+  </div>
+
+  <div class="input-section">
+    <label>Your Text</label>
+    <textarea id="inputText" placeholder="Paste or type your text here…"></textarea>
+
+    <div class="tone-row">
+      <button class="tone-btn selected" data-tone="formal">
+        <span class="tone-icon">🎩</span>
+        <span class="tone-label">Formal</span>
+        <span class="tone-desc">Professional & polished</span>
+      </button>
+      <button class="tone-btn" data-tone="casual">
+        <span class="tone-icon">👋</span>
+        <span class="tone-label">Casual</span>
+        <span class="tone-desc">Relaxed & natural</span>
+      </button>
+      <button class="tone-btn" data-tone="direct">
+        <span class="tone-icon">⚡</span>
+        <span class="tone-label">Direct</span>
+        <span class="tone-desc">Clear & no-fluff</span>
+      </button>
+      <button class="tone-btn" data-tone="warm">
+        <span class="tone-icon">🤝</span>
+        <span class="tone-label">Warm</span>
+        <span class="tone-desc">Friendly & caring</span>
+      </button>
+    </div>
+
+    <button class="translate-btn" id="translateBtn">Translate Tone →</button>
+  </div>
+
+  <div class="output-section" id="outputSection">
+    <div class="output-header">
+      <div class="output-label">
+        Translation
+        <span class="output-tone-badge" id="outputBadge">Formal</span>
+      </div>
+      <div class="output-actions">
+        <button class="action-btn" id="copyBtn">📋 Copy</button>
+        <button class="action-btn" id="emailBtn">✉️ Email</button>
+      </div>
+    </div>
+    <div class="output-text" id="outputText"></div>
+  </div>
+</main>
+
+<script>
+  // ── STATE ──
+  let apiKey = localStorage.getItem('tt_apiKey') || '';
+  let email  = localStorage.getItem('tt_email')  || '';
+  let selectedTone = 'formal';
+  let currentOutput = '';
+
+  const TONE_PROMPTS = {
+    formal: 'Rewrite the following text in a formal, professional tone suitable for business correspondence. Maintain the core meaning exactly.',
+    casual: 'Rewrite the following text in a casual, conversational tone as if speaking to a friend. Keep it natural and relaxed.',
+    direct: 'Rewrite the following text to be as direct and concise as possible. Cut filler words, get straight to the point, no fluff.',
+    warm:   'Rewrite the following text in a warm, empathetic, and friendly tone. Make it feel human, caring, and approachable.'
+  };
+
+  // ── INIT ──
+  function init() {
+    if (apiKey) { document.getElementById('apiKeyInput').value = apiKey; updateConfigDot(); }
+    if (email)  { document.getElementById('emailInput').value  = email; }
+  }
+
+  function updateConfigDot() {
+    const btn = document.getElementById('settingsBtn');
+    const dot = document.getElementById('configDot');
+    if (apiKey) { btn.classList.add('configured'); dot.title = 'API key set'; }
+    else        { btn.classList.remove('configured'); }
+  }
+
+  // ── SETTINGS ──
+  function openSettings() {
+    document.getElementById('settingsOverlay').classList.add('open');
+    document.getElementById('noKeyBanner').classList.remove('show');
+  }
+  document.getElementById('settingsBtn').addEventListener('click', openSettings);
+  document.getElementById('settingsClose').addEventListener('click', () =>
+    document.getElementById('settingsOverlay').classList.remove('open'));
+  document.getElementById('settingsOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('settingsOverlay'))
+      document.getElementById('settingsOverlay').classList.remove('open');
+  });
+  document.getElementById('settingsSave').addEventListener('click', () => {
+    apiKey = document.getElementById('apiKeyInput').value.trim();
+    email  = document.getElementById('emailInput').value.trim();
+    localStorage.setItem('tt_apiKey', apiKey);
+    localStorage.setItem('tt_email',  email);
+    updateConfigDot();
+    document.getElementById('settingsOverlay').classList.remove('open');
+  });
+
+  // ── TONE SELECTION ──
+  document.querySelectorAll('.tone-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedTone = btn.dataset.tone;
+    });
+  });
+
+  // ── TRANSLATE ──
+  document.getElementById('translateBtn').addEventListener('click', translate);
+
+  async function translate() {
+    const text = document.getElementById('inputText').value.trim();
+    if (!text) { document.getElementById('inputText').focus(); return; }
+    if (!apiKey) { document.getElementById('noKeyBanner').classList.add('show'); return; }
+
+    const btn = document.getElementById('translateBtn');
+    btn.disabled = true;
+    btn.textContent = 'Translating…';
+
+    const outputSection = document.getElementById('outputSection');
+    const outputText    = document.getElementById('outputText');
+    outputSection.classList.add('visible');
+    outputText.classList.add('streaming');
+    outputText.textContent = '';
+    document.getElementById('outputBadge').textContent =
+      selectedTone.charAt(0).toUpperCase() + selectedTone.slice(1);
+
+    currentOutput = '';
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1024,
+          stream: true,
+          messages: [{
+            role: 'user',
+            content: TONE_PROMPTS[selectedTone] + '\n\n---\n\n' + text
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || 'API error');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const json = JSON.parse(data);
+            if (json.type === 'content_block_delta' && json.delta?.text) {
+              currentOutput += json.delta.text;
+              outputText.textContent = currentOutput;
+            }
+          } catch {}
+        }
+      }
+    } catch (err) {
+      outputText.textContent = '⚠ ' + (err.message || 'Something went wrong. Check your API key in Settings.');
+    } finally {
+      outputText.classList.remove('streaming');
+      btn.disabled = false;
+      btn.textContent = 'Translate Tone →';
+    }
+  }
+
+  // ── COPY ──
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    if (!currentOutput) return;
+    await navigator.clipboard.writeText(currentOutput);
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied';
+    setTimeout(() => btn.textContent = '📋 Copy', 1800);
+  });
+
+  // ── EMAIL ──
+  document.getElementById('emailBtn').addEventListener('click', () => {
+    if (!currentOutput) return;
+    document.getElementById('modalEmail').value = email || '';
+    document.getElementById('sendStatus').textContent = '';
+    document.getElementById('sendStatus').className = 'send-status';
+    document.getElementById('emailModal').classList.add('open');
+  });
+  document.getElementById('modalCancel').addEventListener('click', () =>
+    document.getElementById('emailModal').classList.remove('open'));
+  document.getElementById('emailModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('emailModal'))
+      document.getElementById('emailModal').classList.remove('open');
+  });
+  document.getElementById('modalSend').addEventListener('click', () => {
+    const to = document.getElementById('modalEmail').value.trim();
+    if (!to) { document.getElementById('sendStatus').textContent = 'Enter an email address.'; document.getElementById('sendStatus').className = 'send-status err'; return; }
+    const subject = encodeURIComponent('Tone Translation — ' + selectedTone.charAt(0).toUpperCase() + selectedTone.slice(1));
+    const body    = encodeURIComponent(currentOutput);
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    document.getElementById('sendStatus').textContent = 'Mail client opened.';
+    document.getElementById('sendStatus').className = 'send-status ok';
+    setTimeout(() => document.getElementById('emailModal').classList.remove('open'), 1200);
+  });
+
+  init();
+</script>
+</body>
+</html>
