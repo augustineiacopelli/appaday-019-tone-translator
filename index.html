@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="manifest" href="https://augustineiacopelli.github.io/appaday/manifests/019.webmanifest">
 <script src="https://augustineiacopelli.github.io/appaday/save.js" defer></script>
+<script src="https://augustineiacopelli.github.io/appaday/keys.js" data-app="019" data-legacy-key="tt_apiKey" data-accent="#289664" defer></script>
 <title>Tone Translator | AppADay 019</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -477,10 +478,7 @@
   <div class="settings-panel">
     <button class="settings-close" id="settingsClose">✕</button>
     <h2>Settings</h2>
-    <div class="field">
-      <label>Anthropic API Key</label>
-      <input type="password" id="apiKeyInput" placeholder="sk-ant-…" autocomplete="off">
-    </div>
+    <div class="field"><div id="keyMount"><p style="font-size:.85rem;opacity:.75;margin:0">The key manager is loading. If this stays, check your connection and reload.</p></div></div>
     <div class="field">
       <label>Email Address (for sending output)</label>
       <input type="email" id="emailInput" placeholder="you@example.com">
@@ -564,7 +562,6 @@
 
 <script>
   // ── STATE ──
-  let apiKey = localStorage.getItem('tt_apiKey') || '';
   let email  = localStorage.getItem('tt_email')  || '';
   let selectedTone = 'formal';
   let currentOutput = '';
@@ -578,19 +575,22 @@
 
   // ── INIT ──
   function init() {
-    if (apiKey) { document.getElementById('apiKeyInput').value = apiKey; updateConfigDot(); }
+    updateConfigDot();
     if (email)  { document.getElementById('emailInput').value  = email; }
   }
 
   function updateConfigDot() {
     const btn = document.getElementById('settingsBtn');
     const dot = document.getElementById('configDot');
-    if (apiKey) { btn.classList.add('configured'); dot.title = 'API key set'; }
+    if (window.AppKeys && window.AppKeys.has()) { btn.classList.add('configured'); dot.title = 'API key set'; }
     else        { btn.classList.remove('configured'); }
   }
+  window.addEventListener('appaday:keychange', updateConfigDot);
+  document.addEventListener('DOMContentLoaded', updateConfigDot);
 
   // ── SETTINGS ──
   function openSettings() {
+    if (window.AppKeys) window.AppKeys.mountSettings(document.getElementById('keyMount'));
     document.getElementById('settingsOverlay').classList.add('open');
     document.getElementById('noKeyBanner').classList.remove('show');
   }
@@ -602,9 +602,7 @@
       document.getElementById('settingsOverlay').classList.remove('open');
   });
   document.getElementById('settingsSave').addEventListener('click', () => {
-    apiKey = document.getElementById('apiKeyInput').value.trim();
     email  = document.getElementById('emailInput').value.trim();
-    localStorage.setItem('tt_apiKey', apiKey);
     localStorage.setItem('tt_email',  email);
     updateConfigDot();
     document.getElementById('settingsOverlay').classList.remove('open');
@@ -625,6 +623,7 @@
   async function translate() {
     const text = document.getElementById('inputText').value.trim();
     if (!text) { document.getElementById('inputText').focus(); return; }
+    const apiKey = window.AppKeys ? await window.AppKeys.get() : null;
     if (!apiKey) { document.getElementById('noKeyBanner').classList.add('show'); return; }
 
     const btn = document.getElementById('translateBtn');
