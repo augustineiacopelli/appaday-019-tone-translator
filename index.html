@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="manifest" href="https://augustineiacopelli.github.io/appaday/manifests/019.webmanifest">
 <script src="https://augustineiacopelli.github.io/appaday/save.js" defer></script>
+<script src="https://augustineiacopelli.github.io/appaday/models.js"></script>
 <script src="https://augustineiacopelli.github.io/appaday/keys.js" data-app="019" data-legacy-key="tt_apiKey" data-accent="#289664" defer></script>
 <title>Tone Translator | AppADay 019</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -650,7 +651,7 @@
           'anthropic-dangerous-direct-browser-access': 'true'
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-5-5',
+          model: (window.AppModels ? window.AppModels.id('sonnet') : ''),
           max_tokens: 1024,
           stream: true,
           messages: [{
@@ -731,15 +732,6 @@
 
   init();
 
-async function getModel(tier = 'sonnet') {
-  try {
-    const response = await fetch('../config.json');
-    const config = await response.json();
-    return config.models[tier];
-  } catch {
-    return 'claude-sonnet-5-5';
-  }
-}
 </script>
 </body>
 </html>
