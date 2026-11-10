@@ -652,7 +652,7 @@
         },
         body: JSON.stringify({
           model: (window.AppModels ? window.AppModels.id('sonnet') : ''),
-          max_tokens: 1024,
+          max_tokens: 1024, thinking: (window.AppModels && window.AppModels.thinking ? window.AppModels.thinking('sonnet') : undefined),
           stream: true,
           messages: [{
             role: 'user',
